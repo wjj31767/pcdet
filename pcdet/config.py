@@ -81,5 +81,6 @@ def cfg_from_yaml_file(cfg_file, config):
 
 
 cfg = EasyDict()
-cfg.ROOT_DIR = (Path(__file__).resolve().parent / '../').resolve()
+# cfg.ROOT_DIR = (Path(__file__).resolve().parent / '../').resolve()
+cfg.ROOT_DIR = Path('/home/ki/output/juncong/SemanticVoxels+')
 cfg.LOCAL_RANK = 0

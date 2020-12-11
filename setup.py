@@ -38,14 +38,13 @@ if __name__ == '__main__':
         install_requires=[
             'numpy',
             'torch>=1.1',
-            'spconv',
             'numba',
             'tensorboardX',
             'easydict',
             'pyyaml'
         ],
-        author='Shaoshuai Shi',
-        author_email='shaoshuaics@gmail.com',
+        author='J. Fei',
+        author_email='juncong.fei@gmail.com',
         license='Apache License 2.0',
         packages=find_packages(exclude=['tools', 'data', 'output']),
         cmdclass={'build_ext': BuildExtension},
@@ -67,45 +66,6 @@ if __name__ == '__main__':
                     'src/roiaware_pool3d.cpp',
                     'src/roiaware_pool3d_kernel.cu',
                 ]
-            ),
-            make_cuda_ext(
-                name='roipoint_pool3d_cuda',
-                module='pcdet.ops.roipoint_pool3d',
-                sources=[
-                    'src/roipoint_pool3d.cpp',
-                    'src/roipoint_pool3d_kernel.cu',
-                ]
-            ),
-            make_cuda_ext(
-                name='pointnet2_stack_cuda',
-                module='pcdet.ops.pointnet2.pointnet2_stack',
-                sources=[
-                    'src/pointnet2_api.cpp',
-                    'src/ball_query.cpp',
-                    'src/ball_query_gpu.cu',
-                    'src/group_points.cpp',
-                    'src/group_points_gpu.cu',
-                    'src/sampling.cpp',
-                    'src/sampling_gpu.cu', 
-                    'src/interpolate.cpp', 
-                    'src/interpolate_gpu.cu',
-                ],
-            ),
-            make_cuda_ext(
-                name='pointnet2_batch_cuda',
-                module='pcdet.ops.pointnet2.pointnet2_batch',
-                sources=[
-                    'src/pointnet2_api.cpp',
-                    'src/ball_query.cpp',
-                    'src/ball_query_gpu.cu',
-                    'src/group_points.cpp',
-                    'src/group_points_gpu.cu',
-                    'src/interpolate.cpp',
-                    'src/interpolate_gpu.cu',
-                    'src/sampling.cpp',
-                    'src/sampling_gpu.cu',
-
-                ],
             ),
         ],
     )

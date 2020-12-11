@@ -39,7 +39,21 @@ class DataAugmentor(object):
 
     def __setstate__(self, d):
         self.__dict__.update(d)
-   
+
+    def noise_per_object(self, data_dict=None, config=None):
+        if data_dict is None:
+            return partial(self.noise_per_object, config=config)
+        gt_boxes, points = augmentor_utils.noise_per_object_v3_(
+            data_dict['gt_boxes'],
+            data_dict['points'],
+            None,
+            config['GT_ROT_UNIFORM_NOISE'],
+            config['GT_LOC_NOISE_STD']
+        )
+        data_dict['gt_boxes'] = gt_boxes
+        data_dict['points'] = points
+        return data_dict
+
     def random_world_flip(self, data_dict=None, config=None):
         if data_dict is None:
             return partial(self.random_world_flip, config=config)
