@@ -69,6 +69,7 @@ def merge_new_config(config, new_config):
 
 
 def cfg_from_yaml_file(cfg_file, config):
+    print(cfg_file)
     with open(cfg_file, 'r') as f:
         try:
             new_config = yaml.load(f, Loader=yaml.FullLoader)
@@ -82,5 +83,5 @@ def cfg_from_yaml_file(cfg_file, config):
 
 cfg = EasyDict()
 # cfg.ROOT_DIR = (Path(__file__).resolve().parent / '../').resolve()
-cfg.ROOT_DIR = Path('/home/ki/output/juncong/SemanticVoxels+')
+cfg.ROOT_DIR = Path('/mrtstorage/users/students/jinwei/SemanticVoxels+/fgsmdefenseL1_0.03')
 cfg.LOCAL_RANK = 0

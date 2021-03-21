@@ -15,7 +15,7 @@ from pcdet.datasets import build_dataloader
 from pcdet.models import build_network, model_fn_decorator
 from pcdet.utils import common_utils
 from train_utils.optimization import build_optimizer, build_scheduler
-from train_utils.train_utils import train_model
+from train_utils.train_fgsm_utils import train_model
 
 
 def parse_config():
@@ -55,7 +55,7 @@ def parse_config():
     return args, cfg
 
 
-def main():
+def main(adv,epsilon,ord,iterations):
     args, cfg = parse_config()
     if args.launcher == 'none':
         dist_train = False
@@ -151,6 +151,10 @@ def main():
     logger.info('**********************Start training %s/%s(%s)**********************'
                 % (cfg.EXP_GROUP_PATH, cfg.TAG, args.extra_tag))
     train_model(
+        adv,
+        epsilon,
+        ord,
+        iterations,
         model,
         optimizer,
         train_loader,
@@ -195,4 +199,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(True,0.03,"1",1)

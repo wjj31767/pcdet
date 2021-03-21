@@ -62,7 +62,6 @@ class AnchorHeadSingle(AnchorHeadTemplate):
                 gt_boxes=data_dict['gt_boxes']
             )
             self.forward_ret_dict.update(targets_dict)
-
         if not self.training or self.predict_boxes_when_training:
             batch_cls_preds, batch_box_preds = self.generate_predicted_boxes(
                 batch_size=data_dict['batch_size'],

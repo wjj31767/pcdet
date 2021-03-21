@@ -10,8 +10,8 @@ import numpy as np
 import torch
 from tensorboardX import SummaryWriter
 import warnings
-warnings.simplefilter('default')
-from eval_utils import eval_utils
+
+from eval_utils import eval_fgsm_utils as eval_utils
 from pcdet.config import cfg, cfg_from_list, cfg_from_yaml_file, log_config_to_file
 from pcdet.datasets import build_dataloader
 from pcdet.models import build_network
@@ -28,7 +28,7 @@ def parse_config():
     parser.add_argument('--ckpt', type=str, default=None, help='checkpoint to start from')
     parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm'], default='none')
     parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
-    parser.add_argument('--local_rank', type=int, default=50, help='local rank for distributed training')
+    parser.add_argument('--local_rank', type=int, default=0, help='local rank for distributed training')
     parser.add_argument('--set', dest='set_cfgs', default=None, nargs=argparse.REMAINDER,
                         help='set extra config keys if needed')
 
@@ -53,14 +53,14 @@ def parse_config():
     return args, cfg
 
 
-def eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epoch_id, dist_test=False):
+def eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epsilon, ord, iterations, rec_type,pgd,momentum, epoch_id, dist_test=False):
     # load checkpoint
     model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=dist_test)
     model.cuda()
 
     # start evaluation
     eval_utils.eval_one_epoch(
-        cfg, model, test_loader, epoch_id, logger, dist_test=dist_test,
+        cfg, model, test_loader, epoch_id, logger, epsilon, ord, iterations, rec_type,pgd,momentum, dist_test=dist_test,
         result_dir=eval_output_dir, save_to_file=args.save_to_file
     )
 
@@ -121,7 +121,6 @@ def repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir
             cfg, model, test_loader, cur_epoch_id, logger, dist_test=dist_test,
             result_dir=cur_result_dir, save_to_file=args.save_to_file
         )
-
         if cfg.LOCAL_RANK == 0:
             for key, val in tb_dict.items():
                 tb_log.add_scalar(key, val, cur_epoch_id)
@@ -132,7 +131,8 @@ def repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir
         logger.info('Epoch %s has been evaluated' % cur_epoch_id)
 
 
-def main():
+def main(epsilon,ord,iterations,rec_type,pgd,momentum):
+    print("epsilon",epsilon,"ord",ord,"iterations",iterations,"rec_type",rec_type,"pgd",pgd,"momentum",momentum)
     args, cfg = parse_config()
     if args.launcher == 'none':
         dist_test = False
@@ -142,7 +142,6 @@ def main():
             args.tcp_port, args.local_rank, backend='nccl'
         )
         dist_test = True
-
     if args.batch_size is None:
         args.batch_size = cfg.OPTIMIZATION.BATCH_SIZE_PER_GPU
     else:
@@ -187,14 +186,20 @@ def main():
         batch_size=args.batch_size,
         dist=dist_test, workers=args.workers, logger=logger, training=False
     )
-
     model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=test_set)
-    with torch.no_grad():
-        if args.eval_all:
-            repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir, dist_test=dist_test)
-        else:
-            eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epoch_id, dist_test=dist_test)
+    if args.eval_all:
+        repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir, dist_test=dist_test)
+    else:
+        eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epsilon, ord, iterations, rec_type,pgd,momentum, epoch_id, dist_test=dist_test)
 
 
 if __name__ == '__main__':
-    main()
+    # for k in ["1","2","2.5","inf"]:
+    #     for j in ["both",'points']:
+    #         for i in [0.01，0.02，0.03，0.04，0.05]:
+    #             main(i,k,1,j)
+    for i in [0.01,0.02,0.03,0.04,0.05]:
+        main(i,"2.5",1,"points",pgd=False,momentum=False)
+    # for i in [x * 0.001 for x in range(0, 21)]:
+    #     print("epsilon", i, 'inf', 10, 'both')
+    #     main(i,'inf',10,'both')
