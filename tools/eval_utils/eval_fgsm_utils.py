@@ -19,7 +19,6 @@ def statistics_info(cfg, ret_dict, metric, disp_dict):
         '(%d, %d) / %d' % (metric['recall_roi_%s' % str(min_thresh)], metric['recall_rcnn_%s' % str(min_thresh)], metric['gt_num'])
 
 def fgsm(epsilon, batch_dict, model, ord, iterations, pgd=False, momentum=None, clip_norm=None):
-    global original_voxels
     alpha = epsilon / iterations
     if ord == "inf":
         ord_fn = torch.sign
@@ -35,16 +34,20 @@ def fgsm(epsilon, batch_dict, model, ord, iterations, pgd=False, momentum=None, 
                 torch.zeros_like(x).cuda(), x / norm)
     else:
         raise ValueError("Only L-inf, L1, L2, and normalized L2 norms are supported!")
+    original_voxels = batch_dict['voxels'].clone()
     if pgd:
-        original_voxels = batch_dict['voxels'].clone()
         example_voxels_adv = original_voxels + (torch.rand(batch_dict['voxels'].size(), dtype=batch_dict['voxels'].dtype,
                                                               device=batch_dict['voxels'].device) - 0.5) * epsilon / 2
     if momentum:
         prev_grad = torch.zeros_like(batch_dict['voxels'])
+
     for _ in range(iterations):
+
         if pgd:
             batch_dict['voxels'] = example_voxels_adv
+
         batch_dict['voxels'].requires_grad_(True)
+
         for cur_module in model.module_list:
             batch_dict = cur_module(batch_dict)
         model.dense_head.forward_ret_dict.update(model.dense_head.assign_targets(gt_boxes=batch_dict['gt_boxes']))
@@ -57,18 +60,21 @@ def fgsm(epsilon, batch_dict, model, ord, iterations, pgd=False, momentum=None, 
             grad = momentum * prev_grad + grad
             prev_grad = grad.clone()
         perturb = alpha * ord_fn(grad)
-
         batch_dict['voxels'] = batch_dict['voxels'].detach()
         true_tensor = torch.ones(batch_dict['voxels'].shape, dtype=batch_dict['voxels'].dtype).cuda()
         false_tensor = torch.zeros(batch_dict['voxels'].shape, dtype=batch_dict['voxels'].dtype).cuda()
-        mask = torch.where(batch_dict['voxels'] != 0., true_tensor, false_tensor).bool()
+        mask = torch.where(original_voxels != 0., true_tensor, false_tensor).bool()
+        batch_dict['voxels'] = original_voxels.clone()
         batch_dict['voxels'][mask.any(-1)] += perturb[mask.any(-1)]
+
         if pgd:
             batch_dict['voxels'] = original_voxels+torch.clamp(batch_dict['voxels']-original_voxels,-alpha,alpha)
+
+        original_voxels = batch_dict['voxels'].clone()
 def rectification_pointcloud(example, original_voxels):
     true_tensor = torch.ones(example['voxels'].shape, dtype=example['voxels'].dtype).cuda()
     false_tensor = torch.zeros(example['voxels'].shape, dtype=example['voxels'].dtype).cuda()
-    mask = torch.where(example['voxels'] != 0., true_tensor, false_tensor).bool()
+    mask = torch.where(original_voxels != 0., true_tensor, false_tensor).bool()
     example['voxels'][mask.any(-1)][:, :3] = original_voxels[mask.any(-1)][:, :3] * torch.sum(
         example['voxels'][mask.any(-1)][:, :3] * original_voxels[mask.any(-1)][:, :3], dim=1, keepdim=True) / torch.sum(
         original_voxels[mask.any(-1)][:, :3] * original_voxels[mask.any(-1)][:, :3], dim=1, keepdim=True)
@@ -82,7 +88,7 @@ def rectification_angle(example, original_voxels):
 def rectification(example, original_voxels):
     true_tensor = torch.ones(example['voxels'].shape, dtype=example['voxels'].dtype).cuda()
     false_tensor = torch.zeros(example['voxels'].shape, dtype=example['voxels'].dtype).cuda()
-    mask = torch.where(example['voxels'] != 0., true_tensor, false_tensor).bool()
+    mask = torch.where(original_voxels != 0., true_tensor, false_tensor).bool()
     example['voxels'][mask.any(-1)][:, :3] = original_voxels[mask.any(-1)][:, :3] * torch.sum(
         example['voxels'][mask.any(-1)][:, :3] * original_voxels[mask.any(-1)][:, :3], dim=1, keepdim=True) / torch.sum(
         original_voxels[mask.any(-1)][:, :3] * original_voxels[mask.any(-1)][:, :3], dim=1, keepdim=True)
@@ -121,7 +127,9 @@ def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, epsilon, ord, itera
     start_time = time.time()
     for i, batch_dict in enumerate(dataloader):
         load_data_to_gpu(batch_dict)
+
         original_voxels = batch_dict['voxels'].clone()
+
         fgsm(epsilon, batch_dict, model, ord, iterations, pgd=True,momentum=False)
         # rectification on both
         if rec_type=="both":
@@ -134,9 +142,13 @@ def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, epsilon, ord, itera
             rectification_angle(batch_dict, original_voxels)
         else:
             raise ValueError("3 type of rectification is accepted")
+
+
         with torch.no_grad():
             pred_dicts,ret_dict = model(batch_dict)
-
+        d = {'inf':'inf','1':'L1','2':'L2',"2.5":'L25'}
+        # batch_dict['voxels'].view(-1,4).unique(dim=0).cpu().detach().numpy().astype('float32').tofile(f'/mrtstorage/users/jinwei/semanticvoxelsplus/data/kitti_{d[ord]}_{str(epsilon)[-1]}/training/velodyne/'+(str(batch_dict['frame_id'][0])+'.bin'))
+        # print(f'/mrtstorage/users/jinwei/semanticvoxelsplus/data/kitti_{d[ord]}_{str(epsilon)[-1]}/training/velodyne/'+(str(batch_dict['frame_id'][0])+'.bin'))
         disp_dict = {}
 
         statistics_info(cfg, ret_dict, metric, disp_dict)
@@ -195,7 +207,7 @@ def eval_one_epoch(cfg, model, dataloader, epoch_id, logger, epsilon, ord, itera
         output_path=final_output_dir
     )
 
-    # logger.info(result_str)
+    logger.info(result_str)
     print(result_str)
     ret_dict.update(result_dict)
 

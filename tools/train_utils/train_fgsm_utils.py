@@ -22,16 +22,10 @@ def fgsm(epsilon, batch_dict, model, ord, iterations, pgd=False, momentum=None, 
                 torch.zeros_like(x).cuda(), x / norm)
     else:
         raise ValueError("Only L-inf, L1, L2, and normalized L2 norms are supported!")
-    if pgd:
-        example_voxels_adv = batch_dict['voxels'].clone()
-        example_voxels_adv = example_voxels_adv + (torch.rand(batch_dict['voxels'].size(), dtype=batch_dict['voxels'].dtype,
-                                                              device=batch_dict['voxels'].device) - 0.5) * epsilon / 2
 
     for _ in range(iterations):
-        if momentum:
-            prev_grad = torch.zeros_like(batch_dict['voxels'])
-        if pgd:
-            batch_dict['voxels'] = example_voxels_adv
+        original_voxels = batch_dict['voxels'].clone()
+
         batch_dict['voxels'].requires_grad_(True)
         for cur_module in model.module_list:
             batch_dict = cur_module(batch_dict)
@@ -40,18 +34,14 @@ def fgsm(epsilon, batch_dict, model, ord, iterations, pgd=False, momentum=None, 
         model.zero_grad()
         loss.mean().backward()
         grad = batch_dict['voxels'].grad.data.clone()
-        if momentum:
-            grad = grad / torch.mean(torch.abs(grad), dim=1, keepdim=True)
-            grad = momentum * prev_grad + grad
-            prev_grad = grad.clone()
         perturb = alpha * ord_fn(grad)
-        if pgd:
-            torch.clamp(perturb,-alpha,alpha)
         batch_dict['voxels'] = batch_dict['voxels'].detach()
         true_tensor = torch.ones(batch_dict['voxels'].shape, dtype=batch_dict['voxels'].dtype).cuda()
         false_tensor = torch.zeros(batch_dict['voxels'].shape, dtype=batch_dict['voxels'].dtype).cuda()
-        mask = torch.where(batch_dict['voxels'] != 0., true_tensor, false_tensor).bool()
+        mask = torch.where(original_voxels != 0., true_tensor, false_tensor).bool()
+        batch_dict['voxels'] = original_voxels.clone()
         batch_dict['voxels'][mask.any(-1)] += perturb[mask.any(-1)]
+
 
 def train_one_epoch(adv, epsilon, ord, iterations, model, optimizer, train_loader, model_func, lr_scheduler, accumulated_iter, optim_cfg,
                     rank, tbar, total_it_each_epoch, dataloader_iter, tb_log=None, leave_pbar=False):

@@ -20,30 +20,118 @@ from pcdet.utils import common_utils
 
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
-    parser.add_argument('--cfg_file', type=str, default=None, help='specify the config for training')
+    parser.add_argument(
+        '--cfg_file',
+        type=str,
+        default=None,
+        help='specify the config for training')
 
-    parser.add_argument('--batch_size', type=int, default=None, required=False, help='batch size for training')
-    parser.add_argument('--workers', type=int, default=4, help='number of workers for dataloader')
-    parser.add_argument('--extra_tag', type=str, default='default', help='extra tag for this experiment')
-    parser.add_argument('--ckpt', type=str, default=None, help='checkpoint to start from')
-    parser.add_argument('--launcher', choices=['none', 'pytorch', 'slurm'], default='none')
-    parser.add_argument('--tcp_port', type=int, default=18888, help='tcp port for distrbuted training')
-    parser.add_argument('--local_rank', type=int, default=0, help='local rank for distributed training')
-    parser.add_argument('--set', dest='set_cfgs', default=None, nargs=argparse.REMAINDER,
-                        help='set extra config keys if needed')
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=None,
+        required=False,
+        help='batch size for training')
+    parser.add_argument(
+        '--workers',
+        type=int,
+        default=4,
+        help='number of workers for dataloader')
+    parser.add_argument(
+        '--extra_tag',
+        type=str,
+        default='default',
+        help='extra tag for this experiment')
+    parser.add_argument('--ckpt', type=str, default=None,
+                        help='checkpoint to start from')
+    parser.add_argument(
+        '--launcher',
+        choices=[
+            'none',
+            'pytorch',
+            'slurm'],
+        default='none')
+    parser.add_argument(
+        '--tcp_port',
+        type=int,
+        default=18888,
+        help='tcp port for distrbuted training')
+    parser.add_argument(
+        '--local_rank',
+        type=int,
+        default=0,
+        help='local rank for distributed training')
+    parser.add_argument(
+        '--set',
+        dest='set_cfgs',
+        default=None,
+        nargs=argparse.REMAINDER,
+        help='set extra config keys if needed')
 
-    parser.add_argument('--max_waiting_mins', type=int, default=30, help='max waiting minutes')
+    parser.add_argument(
+        '--max_waiting_mins',
+        type=int,
+        default=30,
+        help='max waiting minutes')
     parser.add_argument('--start_epoch', type=int, default=0, help='')
-    parser.add_argument('--eval_tag', type=str, default='default', help='eval tag for this experiment')
-    parser.add_argument('--eval_all', action='store_true', default=False, help='whether to evaluate all checkpoints')
-    parser.add_argument('--ckpt_dir', type=str, default=None, help='specify a ckpt directory to be evaluated if needed')
-    parser.add_argument('--save_to_file', action='store_true', default=False, help='')
-
+    parser.add_argument(
+        '--eval_tag',
+        type=str,
+        default='default',
+        help='eval tag for this experiment')
+    parser.add_argument(
+        '--eval_all',
+        action='store_true',
+        default=False,
+        help='whether to evaluate all checkpoints')
+    parser.add_argument(
+        '--ckpt_dir',
+        type=str,
+        default=None,
+        help='specify a ckpt directory to be evaluated if needed')
+    parser.add_argument(
+        '--save_to_file',
+        action='store_true',
+        default=False,
+        help='')
+    parser.add_argument(
+        '--norm',
+        type=str,
+        default='inf',
+        help='norm type')
+    parser.add_argument(
+        '--epsilon',
+        type=float,
+        default=0.01,
+        help='epsilon value')
+    parser.add_argument(
+        '--rec_type',
+        type=str,
+        default='both',
+        help='both: attack to points and reflectance'
+             'points: attack to points only'
+             'reflectance: attack to reflectance only')
+    parser.add_argument(
+        '--iterations',
+        type=int,
+        default=1,
+        help='iterations of different method')
+    parser.add_argument(
+        '--pgd',
+        action='store_true',
+        default=False,
+        help='pgd adversarial type, when pgd is True, momentum should be False and iterations should be 10')
+    parser.add_argument(
+        '--momentum',
+        action='store_true',
+        default=False,
+        help='adversarial type momentum, when momentum is True, pgd should be False and iterations should be 10')
     args = parser.parse_args()
 
     cfg_from_yaml_file(args.cfg_file, cfg)
     cfg.TAG = Path(args.cfg_file).stem
-    cfg.EXP_GROUP_PATH = '/'.join(args.cfg_file.split('/')[1:-1])  # remove 'cfgs' and 'xxxx.yaml'
+    # remove 'cfgs' and 'xxxx.yaml'
+    cfg.EXP_GROUP_PATH = '/'.join(args.cfg_file.split('/')[1:-1])
 
     np.random.seed(1024)
 
@@ -53,22 +141,53 @@ def parse_config():
     return args, cfg
 
 
-def eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epsilon, ord, iterations, rec_type,pgd,momentum, epoch_id, dist_test=False):
+def eval_single_ckpt(
+        model,
+        test_loader,
+        args,
+        eval_output_dir,
+        logger,
+        epsilon,
+        ord,
+        iterations,
+        rec_type,
+        pgd,
+        momentum,
+        epoch_id,
+        dist_test=False):
     # load checkpoint
-    model.load_params_from_file(filename=args.ckpt, logger=logger, to_cpu=dist_test)
+    model.load_params_from_file(
+        filename=args.ckpt,
+        logger=logger,
+        to_cpu=dist_test)
     model.cuda()
 
     # start evaluation
     eval_utils.eval_one_epoch(
-        cfg, model, test_loader, epoch_id, logger, epsilon, ord, iterations, rec_type,pgd,momentum, dist_test=dist_test,
-        result_dir=eval_output_dir, save_to_file=args.save_to_file
-    )
+        cfg,
+        model,
+        test_loader,
+        epoch_id,
+        logger,
+        epsilon,
+        ord,
+        iterations,
+        rec_type,
+        pgd,
+        momentum,
+        dist_test=dist_test,
+        result_dir=eval_output_dir,
+        save_to_file=args.save_to_file)
 
 
 def get_no_evaluated_ckpt(ckpt_dir, ckpt_record_file, args):
     ckpt_list = glob.glob(os.path.join(ckpt_dir, '*checkpoint_epoch_*.pth'))
     ckpt_list.sort(key=os.path.getmtime)
-    evaluated_ckpt_list = [float(x.strip()) for x in open(ckpt_record_file, 'r').readlines()]
+    evaluated_ckpt_list = [
+        float(
+            x.strip()) for x in open(
+            ckpt_record_file,
+            'r').readlines()]
 
     for cur_ckpt in ckpt_list:
         num_list = re.findall('checkpoint_epoch_(.*).pth', cur_ckpt)
@@ -78,45 +197,69 @@ def get_no_evaluated_ckpt(ckpt_dir, ckpt_record_file, args):
         epoch_id = num_list[-1]
         if 'optim' in epoch_id:
             continue
-        if float(epoch_id) not in evaluated_ckpt_list and int(float(epoch_id)) >= args.start_epoch:
+        if float(epoch_id) not in evaluated_ckpt_list and int(
+                float(epoch_id)) >= args.start_epoch:
             return epoch_id, cur_ckpt
     return -1, None
 
 
-def repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir, dist_test=False):
+def repeat_eval_ckpt(
+        model,
+        test_loader,
+        args,
+        eval_output_dir,
+        logger,
+        ckpt_dir,
+        dist_test=False):
     # evaluated ckpt record
-    ckpt_record_file = eval_output_dir / ('eval_list_%s.txt' % cfg.DATA_CONFIG.DATA_SPLIT['test'])
+    ckpt_record_file = eval_output_dir / \
+        ('eval_list_%s.txt' % cfg.DATA_CONFIG.DATA_SPLIT['test'])
     with open(ckpt_record_file, 'a'):
         pass
 
     # tensorboard log
     if cfg.LOCAL_RANK == 0:
-        tb_log = SummaryWriter(log_dir=str(eval_output_dir / ('tensorboard_%s' % cfg.DATA_CONFIG.DATA_SPLIT['test'])))
+        tb_log = SummaryWriter(log_dir=str(
+            eval_output_dir / ('tensorboard_%s' % cfg.DATA_CONFIG.DATA_SPLIT['test'])))
     total_time = 0
     first_eval = True
 
     while True:
         # check whether there is checkpoint which is not evaluated
-        cur_epoch_id, cur_ckpt = get_no_evaluated_ckpt(ckpt_dir, ckpt_record_file, args)
+        cur_epoch_id, cur_ckpt = get_no_evaluated_ckpt(
+            ckpt_dir, ckpt_record_file, args)
         if cur_epoch_id == -1 or int(float(cur_epoch_id)) < args.start_epoch:
             wait_second = 30
             if cfg.LOCAL_RANK == 0:
-                print('Wait %s seconds for next check (progress: %.1f / %d minutes): %s \r'
-                      % (wait_second, total_time * 1.0 / 60, args.max_waiting_mins, ckpt_dir), end='', flush=True)
+                print(
+                    'Wait %s seconds for next check (progress: %.1f / %d minutes): %s \r' %
+                    (wait_second,
+                     total_time *
+                     1.0 /
+                     60,
+                     args.max_waiting_mins,
+                     ckpt_dir),
+                    end='',
+                    flush=True)
             time.sleep(wait_second)
             total_time += 30
-            if total_time > args.max_waiting_mins * 60 and (first_eval is False):
+            if total_time > args.max_waiting_mins * \
+                    60 and (first_eval is False):
                 break
             continue
 
         total_time = 0
         first_eval = False
 
-        model.load_params_from_file(filename=cur_ckpt, logger=logger, to_cpu=dist_test)
+        model.load_params_from_file(
+            filename=cur_ckpt,
+            logger=logger,
+            to_cpu=dist_test)
         model.cuda()
 
         # start evaluation
-        cur_result_dir = eval_output_dir / ('epoch_%s' % cur_epoch_id) / cfg.DATA_CONFIG.DATA_SPLIT['test']
+        cur_result_dir = eval_output_dir / \
+            ('epoch_%s' % cur_epoch_id) / cfg.DATA_CONFIG.DATA_SPLIT['test']
         tb_dict = eval_utils.eval_one_epoch(
             cfg, model, test_loader, cur_epoch_id, logger, dist_test=dist_test,
             result_dir=cur_result_dir, save_to_file=args.save_to_file
@@ -131,16 +274,37 @@ def repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir
         logger.info('Epoch %s has been evaluated' % cur_epoch_id)
 
 
-def main(epsilon,ord,iterations,rec_type,pgd,momentum):
-    print("epsilon",epsilon,"ord",ord,"iterations",iterations,"rec_type",rec_type,"pgd",pgd,"momentum",momentum)
+# def main(epsilon, ord, iterations, rec_type, pgd, momentum, ckpt):
+def main():
+
+
+
     args, cfg = parse_config()
+    print(
+        "epsilon",
+        args.epsilon,
+        "ord",
+        args.norm,
+        "iterations",
+        args.iterations,
+        "rec_type",
+        args.rec_type,
+        "pgd",
+        args.pgd,
+        "momentum",
+        args.momentum,
+        "ckpt",
+        args.ckpt
+    )
+    # args.ckpt = ckpt
     if args.launcher == 'none':
         dist_test = False
         total_gpus = 1
     else:
-        total_gpus, cfg.LOCAL_RANK = getattr(common_utils, 'init_dist_%s' % args.launcher)(
-            args.tcp_port, args.local_rank, backend='nccl'
-        )
+        total_gpus, cfg.LOCAL_RANK = getattr(
+            common_utils, 'init_dist_%s' %
+            args.launcher)(
+            args.tcp_port, args.local_rank, backend='nccl')
         dist_test = True
     if args.batch_size is None:
         args.batch_size = cfg.OPTIMIZATION.BATCH_SIZE_PER_GPU
@@ -148,15 +312,18 @@ def main(epsilon,ord,iterations,rec_type,pgd,momentum):
         assert args.batch_size % total_gpus == 0, 'Batch size should match the number of gpus'
         args.batch_size = args.batch_size // total_gpus
 
-    output_dir = cfg.ROOT_DIR / 'output' / cfg.EXP_GROUP_PATH / cfg.TAG / args.extra_tag
+    output_dir = cfg.ROOT_DIR / 'output' / \
+        cfg.EXP_GROUP_PATH / cfg.TAG / args.extra_tag
     output_dir.mkdir(parents=True, exist_ok=True)
 
     eval_output_dir = output_dir / 'eval'
 
     if not args.eval_all:
-        num_list = re.findall(r'\d+', args.ckpt) if args.ckpt is not None else []
+        num_list = re.findall(
+            r'\d+', args.ckpt) if args.ckpt is not None else []
         epoch_id = num_list[-1] if num_list.__len__() > 0 else 'no_number'
-        eval_output_dir = eval_output_dir / ('epoch_%s' % epoch_id) / cfg.DATA_CONFIG.DATA_SPLIT['test']
+        eval_output_dir = eval_output_dir / \
+            ('epoch_%s' % epoch_id) / cfg.DATA_CONFIG.DATA_SPLIT['test']
     else:
         eval_output_dir = eval_output_dir / 'eval_all_default'
 
@@ -164,12 +331,14 @@ def main(epsilon,ord,iterations,rec_type,pgd,momentum):
         eval_output_dir = eval_output_dir / args.eval_tag
 
     eval_output_dir.mkdir(parents=True, exist_ok=True)
-    log_file = eval_output_dir / ('log_eval_%s.txt' % datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
+    log_file = eval_output_dir / ('log_eval_%s.txt' %
+                                  datetime.datetime.now().strftime('%Y%m%d-%H%M%S'))
     logger = common_utils.create_logger(log_file, rank=cfg.LOCAL_RANK)
 
     # log to file
     logger.info('**********************Start logging**********************')
-    gpu_list = os.environ['CUDA_VISIBLE_DEVICES'] if 'CUDA_VISIBLE_DEVICES' in os.environ.keys() else 'ALL'
+    gpu_list = os.environ['CUDA_VISIBLE_DEVICES'] if 'CUDA_VISIBLE_DEVICES' in os.environ.keys(
+    ) else 'ALL'
     logger.info('CUDA_VISIBLE_DEVICES=%s' % gpu_list)
 
     if dist_test:
@@ -179,27 +348,80 @@ def main(epsilon,ord,iterations,rec_type,pgd,momentum):
     log_config_to_file(cfg, logger=logger)
 
     ckpt_dir = args.ckpt_dir if args.ckpt_dir is not None else output_dir / 'ckpt'
-
+    print(cfg.DATA_CONFIG.DATA_PATH)
     test_set, test_loader, sampler = build_dataloader(
         dataset_cfg=cfg.DATA_CONFIG,
         class_names=cfg.CLASS_NAMES,
         batch_size=args.batch_size,
         dist=dist_test, workers=args.workers, logger=logger, training=False
     )
-    model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=test_set)
+    model = build_network(
+        model_cfg=cfg.MODEL,
+        num_class=len(
+            cfg.CLASS_NAMES),
+        dataset=test_set)
     if args.eval_all:
-        repeat_eval_ckpt(model, test_loader, args, eval_output_dir, logger, ckpt_dir, dist_test=dist_test)
+        repeat_eval_ckpt(
+            model,
+            test_loader,
+            args,
+            eval_output_dir,
+            logger,
+            ckpt_dir,
+            dist_test=dist_test)
     else:
-        eval_single_ckpt(model, test_loader, args, eval_output_dir, logger, epsilon, ord, iterations, rec_type,pgd,momentum, epoch_id, dist_test=dist_test)
+        eval_single_ckpt(
+            model,
+            test_loader,
+            args,
+            eval_output_dir,
+            logger,
+            args.epsilon,
+            args.norm,
+            args.iterations,
+            args.rec_type,
+            args.pgd,
+            args.momentum,
+            epoch_id,
+            dist_test=dist_test)
 
 
 if __name__ == '__main__':
-    # for k in ["1","2","2.5","inf"]:
-    #     for j in ["both",'points']:
+    # for k in ["2"]:
+    #   for j in ["both",'points']:
     #         for i in [0.01，0.02，0.03，0.04，0.05]:
     #             main(i,k,1,j)
-    for i in [0.01,0.02,0.03,0.04,0.05]:
-        main(i,"2.5",1,"points",pgd=False,momentum=False)
+
+    # for i in [0.02,0.03,0.04,0.05]:
+    # for ck in [
+    #     # '../../SemanticVoxels+/fgsmdefense0.02/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_78.pth',
+    #         '../../SemanticVoxels+/fgsmdefense0.03/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_78.pth',
+    # # '../../SemanticVoxels+/fgsmdefense0.04/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_65.pth',
+    # # '../../SemanticVoxels+/fgsmdefense0.05/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_78.pth',
+    # # '../../SemanticVoxels+/fgsmdefenseL1_0.01/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_78.pth',
+    # # '../../SemanticVoxels+/fgsmdefenseL1_0.02/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_78.pth',
+    # # '../../SemanticVoxels+/fgsmdefenseL1_0.03/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_79.pth',
+    # #     '../../SemanticVoxels+/fgsmdefenseL1_0.04/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_79.pth',
+    # #     '../../SemanticVoxels+/fgsmdefenseL1_0.05/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_74.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_0.01/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_74.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_0.02/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_76.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_0.03/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_72.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_0.04/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_79.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_0.05/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_74.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_5.01/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_80.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_5.02/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_79.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_5.03/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_74.pth',
+    #     '../../SemanticVoxels+/fgsmdefenseL2_5.04/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_80.pth',
+    # '../../SemanticVoxels+/fgsmdefenseL2_5.05/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_77.pth']:
+        # main(0.03, 'inf', 10, "both", pgd=True, momentum=False,ckpt=ck)
+    # main(0.01, 'inf', 1, "both", pgd=False, momentum=False)
+    # main(0.02, 'inf', 1, "both", pgd=False, momentum=False)
+    # main(0.03, 'inf', 1, "both", pgd=False, momentum=False)
+    #
+    # for k in ["2.5","1"]:
+    #         for i in [0.01,0.02,0.03,0.04,0.05]:
+    #             main(i, k, 1, "both", pgd=False, momentum=False)
     # for i in [x * 0.001 for x in range(0, 21)]:
     #     print("epsilon", i, 'inf', 10, 'both')
     #     main(i,'inf',10,'both')
+    main()

@@ -42,7 +42,47 @@ def parse_config():
     parser.add_argument('--max_waiting_mins', type=int, default=0, help='max waiting minutes')
     parser.add_argument('--start_epoch', type=int, default=0, help='')
     parser.add_argument('--save_to_file', action='store_true', default=False, help='')
-
+    parser.add_argument(
+        '--adv',
+        action='store_true', default=False,
+        help='adv defense or not')
+    parser.add_argument(
+        '--norm',
+        type=str,
+        default='inf',
+        help='norm type')
+    parser.add_argument(
+        '--epsilon',
+        type=float,
+        default=0.01,
+        help='epsilon value')
+    parser.add_argument(
+        '--rec_type',
+        type=str,
+        default='both',
+        help='both: attack to points and reflectance'
+             'points: attack to points only'
+             'reflectance: attack to reflectance only')
+    parser.add_argument(
+        '--iterations',
+        type=int,
+        default=1,
+        help='iterations of different method')
+    parser.add_argument(
+        '--pgd',
+        type=bool,
+        default=False,
+        help='pgd adversarial type, when pgd is True, momentum should be False and iterations should be 10')
+    parser.add_argument(
+        '--momentum',
+        type=bool,
+        default=False,
+        help='adversarial type momentum, when momentum is True, pgd should be False and iterations should be 10')
+    parser.add_argument(
+        '--cfg_root_dir',
+        type=str,
+        default='',
+        help='model and relative informations save dir')
     args = parser.parse_args()
 
     cfg_from_yaml_file(args.cfg_file, cfg)
@@ -55,8 +95,9 @@ def parse_config():
     return args, cfg
 
 
-def main(adv,epsilon,ord,iterations):
+def main():
     args, cfg = parse_config()
+    # cfg.ROOT_DIR=Path(args.cfg_root_dir)
     if args.launcher == 'none':
         dist_train = False
         total_gpus = 1
@@ -150,11 +191,13 @@ def main(adv,epsilon,ord,iterations):
     # -----------------------start training---------------------------
     logger.info('**********************Start training %s/%s(%s)**********************'
                 % (cfg.EXP_GROUP_PATH, cfg.TAG, args.extra_tag))
+    print(cfg.ROOT_DIR)
+
     train_model(
-        adv,
-        epsilon,
-        ord,
-        iterations,
+        args.adv,
+        args.epsilon,
+        args.norm,
+        args.iterations,
         model,
         optimizer,
         train_loader,
@@ -199,4 +242,4 @@ def main(adv,epsilon,ord,iterations):
 
 
 if __name__ == '__main__':
-    main(True,0.03,"1",1)
+    main()

@@ -1,0 +1,3 @@
+cfgs/kitti_models/pointpillar.yaml
+epsilon 0.02 ord inf iterations 10 rec_type both pgd False momentum False ckpt ../../SemanticVoxels+/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_73.pth[inf]=/mrtstorage/users/jinwei/fgsm0.02/output/kitti_models/pointpillar/default/ckpt/checkpoint_epoch_76.pth
+../data/kitti
